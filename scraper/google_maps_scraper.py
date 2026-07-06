@@ -1,3 +1,5 @@
+import os
+import uuid
 import asyncio
 import sys
 import json
@@ -6,9 +8,16 @@ import math
 import random
 import unicodedata
 
+# Configure unique storage directory for this process run (100% Crawlee state isolation)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(script_dir)
+os.environ["CRAWLEE_STORAGE_DIR"] = os.path.join(parent_dir, "storage", f"job_{uuid.uuid4().hex}")
+
 from crawlee import Request, ConcurrencySettings
 from crawlee.router import Router
 from crawlee.crawlers import PlaywrightCrawler, PlaywrightCrawlingContext
+
+
 
 # Ensure we write utf-8 output to stdout
 sys.stdout.reconfigure(encoding='utf-8')
@@ -278,22 +287,77 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
                 if address:
                     address = address.replace("", "").replace("\n", " ").strip()
 
-            # Coordinates from URL
+            # Rating (average score 1.0 - 5.0)
+            rating = 0.0
+            try:
+                rating_elem = await page.query_selector('div.F7nice span[aria-hidden="true"]')
+                if rating_elem:
+                    rating_text = await rating_elem.inner_text()
+                    if rating_text:
+                        rating = float(rating_text.replace(",", ".").strip())
+            except Exception:
+                pass
+
+            # Reviews Count
+            reviews_count = 0
+            try:
+                reviews_elem = await page.query_selector('div.F7nice span[aria-label*="reseñ"], div.F7nice span[aria-label*="review"]')
+                if reviews_elem:
+                    rev_text = await reviews_elem.get_attribute("aria-label")
+                    if rev_text:
+                        digits = "".join(c for c in rev_text if c.isdigit())
+                        if digits:
+                            reviews_count = int(digits)
+            except Exception:
+                pass
+
+            # Introduction description
+            introduction = None
+            try:
+                intro_elem = await page.query_selector('div.WeS02d, div.PYvSYb')
+                if intro_elem:
+                    introduction = await intro_elem.inner_text()
+                    if introduction:
+                        introduction = introduction.strip()
+            except Exception:
+                pass
+
+
+            # Coordinates extraction
             lat = None
             lon = None
-            current_url = page.url
-            if "@" in current_url:
-                parts = current_url.split("@")[1].split(",")
-                if len(parts) >= 2:
-                    try:
-                        lat = float(parts[0])
-                        lon = float(parts[1])
-                    except ValueError:
-                        pass
 
+            # 1. Try to extract from the request link parameters (contains exact coordinates in data parameters !3d and !4d)
+            try:
+                import re
+                match_lat = re.search(r'!3d(-?\d+\.\d+)', link)
+                match_lon = re.search(r'!4d(-?\d+\.\d+)', link)
+                if match_lat and match_lon:
+                    lat = float(match_lat.group(1))
+                    lon = float(match_lon.group(1))
+                    context.log.info(f"Extracted coordinates from link parameters: {lat}, {lon}")
+            except Exception as link_err:
+                context.log.warning(f"Failed to extract coordinates from link parameters: {link_err}")
+
+            # 2. Fallback to URL parsing if link parameters fail
+            if lat is None or lon is None:
+                current_url = page.url
+                if "@" in current_url:
+                    parts = current_url.split("@")[1].split(",")
+                    if len(parts) >= 2:
+                        try:
+                            lat = float(parts[0])
+                            lon = float(parts[1])
+                            context.log.info(f"Extracted coordinates from current page URL: {lat}, {lon}")
+                        except ValueError:
+                            pass
+
+
+            # 3. Last resort fallback to search center
             if lat is None or lon is None:
                 lat = args.latitude
                 lon = args.longitude
+
 
             # Evaluate website (real website vs social networks/directories)
             has_website = False
@@ -319,6 +383,9 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
                 "phone": phone,
                 "website": website,
                 "has_website": has_website,
+                "reviews_count": reviews_count,
+                "rating": rating,
+                "business_introduction": introduction,
                 "city": "Lima",
                 "country": "Perú",
                 "raw_tags": {
@@ -326,6 +393,7 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
                     "google_maps_url": link
                 }
             }
+
             cell_results.append(lead)
         except Exception as ex:
             context.log.error(f"Error extracting details from link {link}: {ex}")
@@ -349,14 +417,154 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
 
 CATEGORY_ALIASES = {
     "todos los negocios": ["negocios", "locales comerciales", "tiendas", "servicios", "comercios"],
-    "restaurantes":  ["restaurante", "restaurant", "cevichería", "pollería",
-                      "picantería", "comida", "chifa", "almuerzo"],
-    "barberias":     ["barbería", "barber shop", "peluquería", "salón de belleza"],
-    "veterinarias":  ["veterinaria", "veterinary", "clínica veterinaria", "pet shop"],
-    "talleres":      ["taller mecánico", "mecánica automotriz", "taller automotriz", "mecánico"],
-    "ferreterias":   ["ferretería", "materiales de construcción", "distribuidora"],
-    "consultorios":  ["consultorio médico", "clínica", "médico", "centro médico", "policlínico"],
+    "restaurantes": [
+        "restaurante", "restaurante peruano", "restaurante criollo", "restaurante familiar",
+        "restaurante campestre", "restaurante turístico", "restaurante vegetariano", "restaurante vegano",
+        "restaurante saludable", "restaurante de comida rápida", "restaurante de comida marina", "cevichería",
+        "pollería", "chifa", "pizzería", "hamburguesería", "sanguchería", "cafetería", "panadería",
+        "pastelería", "heladería", "juguería", "fuente de soda", "menú criollo", "comida al paso",
+        "comida casera", "comida japonesa", "sushi", "comida china", "comida italiana", "comida mexicana",
+        "comida coreana", "comida venezolana", "comida colombiana", "comida árabe", "parrilla",
+        "anticuchería", "picantería", "rosticería", "dark kitchen", "catering", "buffet", "food truck",
+        "bar restaurante", "restobar"
+    ],
+    "belleza": [
+        "barbería", "peluquería", "salón de belleza", "spa", "spa facial", "spa corporal",
+        "centro de estética", "clínica estética", "depilación láser", "manicure", "pedicure",
+        "nail salon", "salón de uñas", "maquillaje profesional", "extensiones de pestañas",
+        "cejas y pestañas", "micropigmentación", "microblading", "masajes", "centro de masajes",
+        "bronceado", "tratamientos faciales", "tratamientos corporales", "cosmetología", "estilista",
+        "colorimetría", "centro capilar", "implante capilar"
+    ],
+    "salud": [
+        "clínica", "centro médico", "policlínico", "consultorio médico", "consultorio dental",
+        "clínica dental", "dentista", "ortodoncia", "endodoncia", "odontopediatría", "implantes dentales",
+        "médico general", "pediatra", "ginecólogo", "dermatólogo", "cardiólogo", "traumatólogo",
+        "oftalmólogo", "otorrino", "psicólogo", "psiquiatra", "nutricionista", "fisioterapia",
+        "centro de rehabilitación", "quiropráctico", "laboratorio clínico", "centro de diagnóstico",
+        "centro radiológico", "ecografías", "farmacia", "botica", "óptica", "podología", "terapia física",
+        "medicina alternativa", "acupuntura", "centro naturista"
+    ],
+    "veterinarias": [
+        "veterinaria", "clínica veterinaria", "hospital veterinario", "pet shop", "tienda de mascotas",
+        "grooming", "baño para mascotas", "peluquería canina", "adiestramiento canino", "guardería canina",
+        "hotel para mascotas", "alimentos para mascotas", "accesorios para mascotas", "farmacia veterinaria",
+        "emergencia veterinaria"
+    ],
+    "talleres": [
+        "taller mecánico", "mecánica automotriz", "taller automotriz", "taller de motos", "mecánica de motos",
+        "lubricentro", "llantería", "alineamiento y balanceo", "planchado y pintura", "electricista automotriz",
+        "cerrajería automotriz", "autopartes", "repuestos de autos", "repuestos de motos", "lavadero de autos",
+        "car wash", "detailing automotriz", "polarizados", "alarmas para autos", "audio car", "baterías para autos",
+        "grúas", "auxilio mecánico", "inspección vehicular", "conversión a GNV", "taller de frenos",
+        "taller de suspensión", "taller de radiadores", "taller de aire acondicionado automotriz"
+    ],
+    "ferreterias": [
+        "ferretería", "tienda de herramientas", "materiales de construcción", "constructora", "contratista",
+        "maestro de obra", "gasfitero", "electricista", "pintor", "carpintero", "cerrajero", "vidriería",
+        "aluminio y vidrio", "drywall", "melamina", "mueblería", "muebles a medida", "acabados de construcción",
+        "pisos", "mayólicas", "cerámicos", "sanitarios", "iluminación", "tienda de pinturas", "puertas",
+        "ventanas", "techos", "estructuras metálicas", "soldadura", "servicios generales",
+        "mantenimiento de edificios", "remodelaciones", "arquitecto", "diseño de interiores"
+    ],
+    "educacion": [
+        "colegio", "inicial", "nido", "guardería", "instituto", "academia preuniversitaria",
+        "academia de idiomas", "academia de inglés", "academia de computación", "academia de música",
+        "escuela de baile", "escuela de manejo", "centro de capacitación", "clases particulares",
+        "tutoría escolar", "centro psicopedagógico", "estimulación temprana", "academia deportiva",
+        "escuela de arte", "escuela de fotografía", "escuela de cocina", "escuela de barbería",
+        "escuela de cosmetología"
+    ],
+    "moda": [
+        "tienda de ropa", "boutique", "ropa para mujer", "ropa para hombre", "ropa para niños",
+        "ropa deportiva", "ropa interior", "zapatería", "tienda de zapatillas", "tienda de carteras",
+        "accesorios de moda", "joyería", "bisutería", "relojería", "sastrería", "modista", "costurera",
+        "confecciones", "alquiler de vestidos", "vestidos de novia", "ternos", "uniformes",
+        "estampados", "bordados", "serigrafía"
+    ],
+    "tecnologia": [
+        "tienda de computadoras", "servicio técnico de computadoras", "reparación de laptops",
+        "reparación de celulares", "tienda de celulares", "accesorios para celulares", "servicio técnico Apple",
+        "servicio técnico Samsung", "impresoras", "reparación de impresoras", "cámaras de seguridad",
+        "instalación de cámaras", "redes y cableado", "soporte técnico", "venta de software",
+        "desarrollo web", "marketing digital", "agencia digital", "diseño gráfico", "diseño web",
+        "hosting", "ciberseguridad", "tienda gamer", "componentes de PC"
+    ],
+    "servicios": [
+        "abogado", "estudio jurídico", "notaría", "contador", "estudio contable", "consultoría empresarial",
+        "asesoría tributaria", "gestoría", "agencia de seguros", "corredor de seguros", "inmobiliaria",
+        "agente inmobiliario", "arquitecto", "ingeniero civil", "topógrafo", "diseñador gráfico",
+        "fotógrafo", "productora audiovisual", "agencia de publicidad", "marketing digital",
+        "community manager", "recursos humanos", "consultora laboral"
+    ],
+    "hospedaje": [
+        "inmobiliaria", "agente inmobiliario", "administración de propiedades", "alquiler de departamentos",
+        "venta de departamentos", "hostal", "hotel", "hospedaje", "apart hotel", "airbnb",
+        "casa de huéspedes", "alojamiento", "residencia estudiantil", "alquiler de oficinas", "coworking",
+        "depósito", "almacén", "mudanza"
+    ],
+    "eventos": [
+        "local de eventos", "salón de eventos", "organización de eventos", "wedding planner", "catering",
+        "decoración de eventos", "alquiler de sillas y mesas", "alquiler de toldos", "sonido e iluminación",
+        "dj", "animador", "fotógrafo de eventos", "filmación de eventos", "cabina fotográfica",
+        "hora loca", "show infantil", "payaso", "caritas pintadas", "inflables", "juegos para fiestas",
+        "florería", "pastelería personalizada"
+    ],
+    "deporte": [
+        "gimnasio", "centro fitness", "entrenador personal", "crossfit", "yoga", "pilates",
+        "artes marciales", "box", "mma", "natación", "academia de fútbol", "cancha deportiva",
+        "cancha de grass sintético", "escuela deportiva", "tienda deportiva", "suplementos deportivos",
+        "centro de nutrición", "fisioterapia deportiva"
+    ],
+    "hogar": [
+        "mueblería", "muebles a medida", "colchonería", "decoración", "cortinas", "persianas",
+        "tapicería", "carpintería", "melamina", "closets", "cocinas integrales", "granito y mármol",
+        "vidriería", "alfombras", "electrodomésticos", "reparación de electrodomésticos",
+        "servicio técnico de refrigeradoras", "servicio técnico de lavadoras", "aire acondicionado",
+        "jardinería", "vivero", "fumigación", "control de plagas", "limpieza de casas",
+        "limpieza de oficinas"
+    ],
+    "retail": [
+        "bodega", "minimarket", "tienda de abarrotes", "mercado", "puesto de mercado", "licorería",
+        "tienda naturista", "tienda orgánica", "tienda de regalos", "librería", "papelería",
+        "bazar", "juguetería", "tienda de bebés", "tienda de artículos religiosos",
+        "tienda de artículos para fiestas", "tienda de decoración", "tienda de manualidades",
+        "tienda de bicicletas", "tienda de instrumentos musicales", "tienda de mascotas",
+        "tienda de productos importados"
+    ],
+    "transporte": [
+        "empresa de transporte", "courier", "servicio de mensajería", "mudanzas", "taxi",
+        "remis", "transporte turístico", "alquiler de autos", "alquiler de vans", "alquiler de buses",
+        "grúa", "transporte de carga", "distribuidora", "operador logístico", "almacén",
+        "depósito", "encomiendas"
+    ],
+    "industria": [
+        "fábrica", "empresa industrial", "metalmecánica", "carpintería metálica", "textil",
+        "confecciones", "imprenta", "serigrafía", "bordados", "packaging", "plásticos",
+        "envases", "maderera", "distribuidora", "mayorista", "importadora", "exportadora",
+        "suministros industriales", "equipos de seguridad", "epp", "extintores", "seguridad industrial"
+    ],
+    "seguridad": [
+        "empresa de seguridad", "vigilancia privada", "cámaras de seguridad", "alarmas", "cerrajería",
+        "extintores", "seguridad electrónica", "control de acceso", "portones eléctricos",
+        "cercos eléctricos", "intercomunicadores", "gps vehicular"
+    ],
+    "finanzas": [
+        "casa de cambio", "cooperativa", "agencia bancaria", "asesor financiero", "préstamos",
+        "casa de empeño", "contador", "asesor tributario", "consultoría empresarial",
+        "servicios notariales", "gestoría vehicular", "gestoría municipal", "trámites documentarios"
+    ],
+    "turismo": [
+        "agencia de viajes", "tour operador", "guía turístico", "transporte turístico", "hotel",
+        "hostal", "restaurante turístico", "museo", "centro cultural", "peña", "karaoke",
+        "bar", "discoteca", "pub", "sala de juegos", "escape room", "centro recreacional", "club"
+    ],
+    "comunidad": [
+        "iglesia", "parroquia", "templo", "centro religioso", "asociación cultural", "ong",
+        "fundación", "centro comunitario", "club social", "club departamental", "casa cultural"
+    ]
 }
+
 
 
 GRID_ZOOMS = [14, 15]   # two zoom levels per cell — each shows a different result set
@@ -378,31 +586,69 @@ def normalize_category(cat_str: str) -> str:
     )
     # Map singulars and abbreviations to primary plural keys
     singular_to_plural = {
-        "barberia": "barberias",
-        "barber shop": "barberias",
-        "peluqueria": "barberias",
-        "salon de belleza": "barberias",
-        "restaurante": "restaurantes",
-        "restaurant": "restaurantes",
-        "cevicherian": "restaurantes",
-        "comida": "restaurantes",
-        "veterinaria": "veterinarias",
-        "pet shop": "veterinarias",
-        "taller": "talleres",
-        "taller mecanico": "talleres",
-        "mecanico": "talleres",
-        "ferreteria": "ferreterias",
-        "consultorio": "consultorios",
-        "clinica": "consultorios",
-        "medico": "consultorios",
-        "todo los negocio": "todos los negocios",
-        "todo los negocios": "todos los negocios",
-        "todo": "todos los negocios",
-        "todos": "todos los negocios"
-      }
+        # 1. Comida
+        "restaurante": "restaurantes", "restaurant": "restaurantes", "cevicherian": "restaurantes", "cevicherias": "restaurantes",
+        "comida": "restaurantes", "chifa": "restaurantes", "polleria": "restaurantes", "panaderia": "restaurantes",
+        "pasteleria": "restaurantes", "cafeteria": "restaurantes", "pizzeria": "restaurantes", "restobar": "restaurantes",
+        # 2. Belleza
+        "barberia": "belleza", "barber shop": "belleza", "peluqueria": "belleza", "salon de belleza": "belleza",
+        "spa": "belleza", "manicure": "belleza", "pedicure": "belleza", "estetica": "belleza",
+        # 3. Salud
+        "clinica": "salud", "centro medico": "salud", "policlinico": "salud", "consultorio": "salud",
+        "dentista": "salud", "consultorio dental": "salud", "medico": "salud", "farmacia": "salud",
+        "botica": "salud", "psicologo": "salud", "fisioterapia": "salud",
+        # 4. Veterinarias
+        "veterinaria": "veterinarias", "pet shop": "veterinarias", "clinica veterinaria": "veterinarias",
+        # 5. Talleres
+        "taller": "talleres", "taller mecanico": "talleres", "mecanico": "talleres", "mecanica": "talleres",
+        "car wash": "talleres", "lavadero": "talleres", "lubricentro": "talleres", "llantera": "talleres",
+        # 6. Ferreterias
+        "ferreteria": "ferreterias", "gasfitero": "ferreterias", "electricista": "ferreterias", "carpintero": "ferreterias",
+        "drywall": "ferreterias", "melamina": "ferreterias", "pintor": "ferreterias", "vidrieria": "ferreterias",
+        # 7. Educacion
+        "colegio": "educacion", "nido": "educacion", "guarderia": "educacion", "escuela": "educacion",
+        "instituto": "educacion", "academia": "educacion",
+        # 8. Moda
+        "ropa": "moda", "tienda de ropa": "moda", "boutique": "moda", "zapatos": "moda", "zapatilla": "moda",
+        "zapatillas": "moda", "accesorio": "moda", "joyeria": "moda", "sastre": "moda",
+        # 9. Tecnologia
+        "tecnologia": "tecnologia", "computadora": "tecnologia", "laptops": "tecnologia", "laptop": "tecnologia",
+        "celular": "tecnologia", "celulares": "tecnologia", "soporte": "tecnologia", "camaras": "tecnologia",
+        # 10. Servicios
+        "abogado": "servicios", "estudio juridico": "servicios", "notaria": "servicios", "contador": "servicios",
+        "estudio contable": "servicios", "inmobiliaria": "servicios", "agente": "servicios", "arquitecto": "servicios",
+        # 11. Hospedaje
+        "hotel": "hospedaje", "hostal": "hospedaje", "alquiler": "hospedaje", "airbnb": "hospedaje",
+        # 12. Eventos
+        "eventos": "eventos", "local de eventos": "eventos", "decoracion": "eventos", "catering": "eventos",
+        "show infantil": "eventos", "animador": "eventos",
+        # 13. Deporte
+        "gimnasio": "deporte", "gym": "deporte", "fitness": "deporte", "yoga": "deporte", "deportes": "deporte",
+        # 14. Hogar
+        "muebles": "hogar", "muebleria": "hogar", "jardinero": "hogar", "jardineria": "hogar",
+        "fumigacion": "hogar", "limpieza": "hogar",
+        # 15. Retail
+        "bodega": "retail", "minimarket": "retail", "tienda": "retail", "bazar": "retail", "libreria": "retail",
+        # 16. Transporte
+        "transporte": "transporte", "courier": "transporte", "mudanza": "transporte", "taxi": "transporte",
+        # 17. Industria
+        "fabrica": "industria", "industrial": "industria", "metalmecanica": "industria", "imprenta": "industria",
+        # 18. Seguridad
+        "seguridad": "seguridad", "vigilancia": "seguridad", "alarmas": "seguridad",
+        # 19. Finanzas
+        "casa de cambio": "finanzas", "banco": "finanzas", "cooperativa": "finanzas", "prestamos": "finanzas",
+        # 20. Turismo
+        "viajes": "turismo", "turismo": "turismo", "karaoke": "turismo", "discoteca": "turismo", "bar": "turismo",
+        # 21. Comunidad
+        "iglesia": "comunidad", "ong": "comunidad", "templo": "comunidad", "parroquia": "comunidad",
+        # Todos
+        "todo los negocio": "todos los negocios", "todo los negocios": "todos los negocios",
+        "todo": "todos los negocios", "todos": "todos los negocios"
+    }
     if s in singular_to_plural:
         s = singular_to_plural[s]
     return s
+
 
 
 # ---------------------------------------------------------------------------
@@ -477,17 +723,30 @@ async def main():
                     cell_results = await scrape_single_cell(term, search_url, args)
 
                     new_count = 0
+                    cell_new_leads = []
                     for lead in cell_results:
                         eid = lead.get("external_id", "")
                         if eid not in seen_ids:
+                            # Filter strictly by user-specified search radius
+                            lead_lat = lead.get("latitude")
+                            lead_lon = lead.get("longitude")
+                            if lead_lat is not None and lead_lon is not None:
+                                dist = haversine(args.latitude, args.longitude, lead_lat, lead_lon)
+                                # 5% padding for boundary margin
+                                if dist > (args.radius * 1.05):
+                                    continue
                             seen_ids.add(eid)
                             all_results.append(lead)
+                            cell_new_leads.append(lead)
                             new_count += 1
 
                     completed_searches += 1
 
                     # Emit progress marker: current_search / total_searches / total_unique_leads
                     print(f"--- CELL_PROGRESS {completed_searches}/{total_searches} {len(all_results)} ---", flush=True)
+                    if cell_new_leads:
+                        print(f"--- CELL_LEADS {json.dumps(cell_new_leads, ensure_ascii=False)} ---", flush=True)
+
 
                     # Shorter delay between zooms of the same cell
                     is_last = (completed_searches == total_searches)
@@ -510,13 +769,30 @@ async def main():
         for lead in single_results:
             eid = lead.get("external_id", "")
             if eid not in seen_ids:
+                lead_lat = lead.get("latitude")
+                lead_lon = lead.get("longitude")
+                if lead_lat is not None and lead_lon is not None:
+                    dist = haversine(args.latitude, args.longitude, lead_lat, lead_lon)
+                    if dist > (args.radius * 1.05):
+                        continue
                 seen_ids.add(eid)
                 all_results.append(lead)
+
 
     # Emit final JSON output
     print("--- JSON_START ---", flush=True)
     print(json.dumps(all_results, ensure_ascii=False), flush=True)
 
+    # Clean up process-specific storage sandbox directory
+    try:
+        import shutil
+        storage_dir = os.environ.get("CRAWLEE_STORAGE_DIR")
+        if storage_dir and os.path.exists(storage_dir):
+            shutil.rmtree(storage_dir)
+    except Exception:
+        pass
+
 
 if __name__ == "__main__":
     asyncio.run(main())
+

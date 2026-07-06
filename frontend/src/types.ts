@@ -30,9 +30,13 @@ export type Lead = {
   lead_score?: number;
   lead_status?: LeadStatus;
   contact_status?: ContactStatus;
+  reviews_count?: number;
+  rating?: number;
+  business_introduction?: string | null;
   notes?: string | null;
   raw_tags?: Record<string, string | null>;
 };
+
 
 export type DashboardMetrics = {
   total_leads: number;

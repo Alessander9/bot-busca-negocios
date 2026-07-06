@@ -90,16 +90,17 @@ public class SearchController {
 
     return searchJobService.getJob(id)
         .map(job -> {
-          // Score partial results if job is running (they come unscored from the scraper)
+          // Score partial results in real-time as they accumulate
           List<Lead> leads = job.getPartialResults();
-          if (job.getStatus() == SearchJob.JobStatus.DONE) {
-            leads.forEach(l -> {
-              int score = scoringService.score(l);
-              l.setLeadScore(score);
-              l.setLeadStatus(scoringService.statusFor(score));
+          leads.forEach(l -> {
+            int score = scoringService.score(l);
+            l.setLeadScore(score);
+            l.setLeadStatus(scoringService.statusFor(score));
+            if (l.getContactStatus() == null) {
               l.setContactStatus(ContactStatus.pendiente_contacto_manual);
-            });
-          }
+            }
+          });
+
           return ResponseEntity.ok(Map.of(
               "jobId",          job.getJobId().toString(),
               "status",         job.getStatus().name(),

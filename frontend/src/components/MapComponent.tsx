@@ -40,6 +40,8 @@ export default function MapComponent({
       attribution: '&copy; <a href="https://maps.google.com">Google Maps</a>'
     }).addTo(map);
 
+
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
@@ -184,6 +186,12 @@ export default function MapComponent({
               <span class="popup-label">Score:</span>
               <span class="popup-val score-${(lead.lead_score ?? 0) >= 70 ? 'high' : (lead.lead_score ?? 0) >= 40 ? 'med' : 'low'}">${lead.lead_score ?? 0}</span>
             </div>
+            ${lead.rating && lead.rating > 0 ? `
+            <div class="popup-metric-row">
+              <span class="popup-label">Rating:</span>
+              <span class="popup-val" style="color: #f59e0b; font-weight: 600;">⭐ ${lead.rating.toFixed(1)} (${lead.reviews_count ?? 0})</span>
+            </div>
+            ` : ''}
             <div class="popup-metric-row">
               <span class="popup-label">Tel:</span>
               <span class="popup-val">${lead.phone ?? '-'}</span>
@@ -193,6 +201,7 @@ export default function MapComponent({
               <span class="popup-val">${lead.has_website ? '✅ Con Web' : '❌ Sin Web'}</span>
             </div>
           </div>
+
         `, {
           className: 'custom-leaflet-popup'
         });

@@ -159,6 +159,7 @@ public class CrawleeScraperService {
       StringBuilder jsonBuffer = new StringBuilder();
       boolean jsonStarted = false;
       int lastCompletedCells = 0;
+      int lastTotalFound = 0;
 
       try (BufferedReader reader = new BufferedReader(
           new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
@@ -177,9 +178,24 @@ public class CrawleeScraperService {
               // First progress update: mark job as RUNNING with total cells
               searchJobService.markRunning(jobId, total);
             }
-            searchJobService.updateProgress(jobId, completed, found, List.of());
             lastCompletedCells = completed;
+            lastTotalFound = found;
+            searchJobService.updateProgress(jobId, completed, found, List.of());
             log.info("[Job {}] Progress: {}/{} cells, {} leads total", jobId, completed, total, found);
+            continue;
+          }
+
+          // Parse real-time leads discovered in the completed cell
+          if (line.trim().startsWith("--- CELL_LEADS ") && line.trim().endsWith(" ---")) {
+            String jsonLeads = line.trim()
+                .substring("--- CELL_LEADS ".length(), line.trim().length() - " ---".length());
+            try {
+              List<Lead> newLeads = objectMapper.readValue(jsonLeads, new TypeReference<List<Lead>>() {});
+              searchJobService.updateProgress(jobId, lastCompletedCells, lastTotalFound, newLeads);
+              log.info("[Job {}] Ingested {} new leads in real-time.", jobId, newLeads.size());
+            } catch (Exception e) {
+              log.error("[Job {}] Failed parsing real-time cell leads JSON: {}", jobId, e.getMessage());
+            }
             continue;
           }
 
@@ -192,6 +208,7 @@ public class CrawleeScraperService {
           }
         }
       }
+
 
       boolean finished = process.waitFor(gridTimeoutSeconds, java.util.concurrent.TimeUnit.SECONDS);
       if (!finished) {

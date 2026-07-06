@@ -36,6 +36,17 @@ public class Lead {
   private String businessStatus = "unknown";
   private String imageUrl;
 
+  @com.fasterxml.jackson.annotation.JsonProperty("reviews_count")
+  private Integer reviewsCount = 0;
+
+  @com.fasterxml.jackson.annotation.JsonProperty("rating")
+  private Double rating = 0.0;
+
+  @com.fasterxml.jackson.annotation.JsonProperty("business_introduction")
+  @Column(columnDefinition = "text")
+  private String businessIntroduction;
+
+
   @Convert(converter = JsonMapConverter.class)
   @Column(columnDefinition = "jsonb")
   private Map<String, Object> rawTags;
@@ -271,4 +282,29 @@ public class Lead {
   public void setUpdatedAt(Instant updatedAt) {
     this.updatedAt = updatedAt;
   }
+
+  public Integer getReviewsCount() {
+    return reviewsCount;
+  }
+
+  public void setReviewsCount(Integer reviewsCount) {
+    this.reviewsCount = reviewsCount;
+  }
+
+  public Double getRating() {
+    return rating;
+  }
+
+  public void setRating(Double rating) {
+    this.rating = rating;
+  }
+
+  public String getBusinessIntroduction() {
+    return businessIntroduction;
+  }
+
+  public void setBusinessIntroduction(String businessIntroduction) {
+    this.businessIntroduction = businessIntroduction;
+  }
 }
+

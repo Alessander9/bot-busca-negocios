@@ -3,17 +3,46 @@ import { api } from '../api';
 import type { Lead, JobStatus } from '../types';
 import MapComponent from '../components/MapComponent';
 
-const categories = ['todos los negocios', 'restaurantes', 'barberias', 'veterinarias', 'talleres', 'ferreterias', 'consultorios'];
+const categories = [
+  'todos los negocios',
+  'restaurantes',
+  'belleza',
+  'salud',
+  'veterinarias',
+  'talleres',
+  'ferreterias',
+  'educacion',
+  'moda',
+  'tecnologia',
+  'servicios',
+  'hospedaje',
+  'eventos',
+  'deporte',
+  'hogar',
+  'retail',
+  'transporte',
+  'industria',
+  'seguridad',
+  'finanzas',
+  'turismo',
+  'comunidad'
+];
+
 
 export default function SearchPage() {
   const [category, setCategory] = useState('todos los negocios');
   const [latitude, setLatitude] = useState(-12.0464);
   const [longitude, setLongitude] = useState(-77.0428);
+  const [latitudeStr, setLatitudeStr] = useState('-12.0464');
+  const [longitudeStr, setLongitudeStr] = useState('-77.0428');
   const [radiusKm, setRadiusKm] = useState(3);
   const [district, setDistrict] = useState('');
 
   const [results, setResults] = useState<Lead[]>([]);
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [isMinimized, setIsMinimized] = useState(false);
+
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -22,7 +51,7 @@ export default function SearchPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-12.0464, -77.0428]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [showPanel, setShowPanel] = useState(true);
-  const [showSheet, setShowSheet] = useState(false);
+  const [showResultsPanel, setShowResultsPanel] = useState(true);
 
   // Filter
   const [webFilter, setWebFilter] = useState<'all' | 'no_website' | 'has_website'>('all');
@@ -50,12 +79,23 @@ export default function SearchPage() {
   // Cleanup on unmount
   useEffect(() => () => stopPolling(), []);
 
-  // Expand bottom sheet if new results come in
+  // Expand results panel if new results come in
   useEffect(() => {
     if (results.length > 0) {
-      setShowSheet(true);
+      setShowResultsPanel(true);
     }
   }, [results.length]);
+
+  // Synchronize string inputs when numeric coordinates change from map actions
+  useEffect(() => {
+    setLatitudeStr(String(latitude));
+  }, [latitude]);
+
+  useEffect(() => {
+    setLongitudeStr(String(longitude));
+  }, [longitude]);
+
+
 
   // Filtered results list helper
   const filteredResults = results.filter((lead) => {
@@ -107,7 +147,9 @@ export default function SearchPage() {
     setTotalCells(0);
     setCompletedCells(0);
     setTotalFound(0);
+    setIsMinimized(false);
     stopPolling();
+
 
     const searchStr = category === 'custom' ? customCategory.trim() : category;
     if (!searchStr) {
@@ -174,15 +216,6 @@ export default function SearchPage() {
 
   return (
     <section style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <header className="header" style={{ marginBottom: '1.5rem' }}>
-        <div>
-          <h1>Buscador de Negocios</h1>
-          <p className="header-desc">
-            Buscador geoespacial con cuadrícula inteligente 100m y evasión de bloqueos.
-          </p>
-        </div>
-      </header>
-
       {error && <div className="alert" style={{ marginBottom: '1rem' }}>{error}</div>}
       {successMsg && (
         <div className="alert" style={{ background: '#064e3b', borderColor: '#059669', color: '#ecfdf5', marginBottom: '1rem' }}>
@@ -205,10 +238,17 @@ export default function SearchPage() {
         {/* Floating parameters panel */}
         <div className={`floating-control-panel ${showPanel ? '' : 'collapsed'}`}>
           <div>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-              ⚙️ Controles de Búsqueda
-            </h2>
+            <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '1rem' }}>
+              <h1 style={{ fontSize: '1.35rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif", background: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #6366f1 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🗺️ PROSPECTOR LOCAL
+              </h1>
+              <p style={{ fontSize: '0.74rem', color: '#8b9bb4', marginTop: '4px', lineHeight: 1.3 }}>
+                Buscador geoespacial con cuadrícula inteligente 100m.
+              </p>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
               <div className="form-group">
                 <label>Rubro Comercial</label>
                 <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={isLoading}>
@@ -299,21 +339,52 @@ export default function SearchPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div className="form-group">
                   <label>Latitud</label>
-                  <input type="number" step="any" value={latitude}
-                    onChange={(e) => setLatitude(Number(e.target.value))}
+                  <input
+                    type="text"
+                    value={latitudeStr}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLatitudeStr(val);
+                      const parsed = parseFloat(val.replace(',', '.'));
+                      if (!isNaN(parsed)) setLatitude(parsed);
+                    }}
                     disabled={isSelectionMode || isLoading}
-                    style={{ opacity: isSelectionMode ? 0.75 : 1, cursor: isSelectionMode ? 'not-allowed' : 'text' }}
+                    style={{
+                      opacity: isSelectionMode ? 0.75 : 1,
+                      cursor: isSelectionMode ? 'not-allowed' : 'text',
+                      background: '#111827',
+                      color: '#fff',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.8rem',
+                    }}
                   />
                 </div>
                 <div className="form-group">
                   <label>Longitud</label>
-                  <input type="number" step="any" value={longitude}
-                    onChange={(e) => setLongitude(Number(e.target.value))}
+                  <input
+                    type="text"
+                    value={longitudeStr}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLongitudeStr(val);
+                      const parsed = parseFloat(val.replace(',', '.'));
+                      if (!isNaN(parsed)) setLongitude(parsed);
+                    }}
                     disabled={isSelectionMode || isLoading}
-                    style={{ opacity: isSelectionMode ? 0.75 : 1, cursor: isSelectionMode ? 'not-allowed' : 'text' }}
+                    style={{
+                      opacity: isSelectionMode ? 0.75 : 1,
+                      cursor: isSelectionMode ? 'not-allowed' : 'text',
+                      background: '#111827',
+                      color: '#fff',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      padding: '0.65rem 0.8rem',
+                    }}
                   />
                 </div>
               </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '10px' }}>
                 <div className="form-group">
                   <label>Radio (km)</label>
@@ -351,109 +422,256 @@ export default function SearchPage() {
           />
         </div>
 
-        {/* Bottom Drawer Slide-up Panel for Results */}
+        {/* Toggle results panel button */}
         {(results.length > 0 || isLoading) && (
-          <div className={`results-bottom-sheet ${showSheet ? 'expanded' : ''}`}>
-            {/* Sheet Handle */}
-            <div className="sheet-handle-bar" onClick={() => setShowSheet(!showSheet)}>
-              <div className="sheet-handle-pill" />
-              <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, marginTop: '4px', letterSpacing: '0.5px' }}>
-                {showSheet ? '▼ COLAPSAR TABLA' : `▲ VER LISTADO (${filteredResults.length} leads)`}
-              </div>
-            </div>
+          <button
+            className="toggle-results-btn"
+            style={{ right: showResultsPanel ? '380px' : '20px', transition: 'right 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+            onClick={() => setShowResultsPanel(!showResultsPanel)}
+            title={showResultsPanel ? 'Contraer lista de resultados' : 'Expandir lista de resultados'}
+          >
+            {showResultsPanel ? '▶' : '📊'}
+          </button>
+        )}
 
-            {/* Inner Content */}
-            <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 24px)', overflow: 'hidden', marginTop: '10px' }}>
-              <div className="flex-between mb-1" style={{ flexWrap: 'wrap', gap: '15px', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.85rem' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📦 Prospectos Detectados
-                    {isLoading && <span style={{ color: '#a78bfa', fontSize: '0.8rem', fontWeight: 500 }}>(actualizando…)</span>}
-                  </h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Filtrar por Sitio Web:</span>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      {(['all', 'no_website', 'has_website'] as const).map(f => (
-                        <button key={f}
-                          className={`btn ${webFilter === f ? 'btn-primary' : 'btn-secondary'}`}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                          onClick={() => setWebFilter(f)}>
-                          {f === 'all' ? 'Todos' : f === 'no_website' ? 'Sin Web' : 'Con Web'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+        {/* Right Floating Sidebar Results Panel */}
+        {(results.length > 0 || isLoading) && (
+          <div className={`floating-results-panel ${showResultsPanel ? '' : 'collapsed'}`}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              
+              {/* Header section with title and stats */}
+              <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.85rem' }}>
+                <h2 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontFamily: "'Outfit', sans-serif" }}>
+                  📦 Prospectos ({filteredResults.length})
+                  {isLoading && <span style={{ color: '#a78bfa', fontSize: '0.75rem', fontWeight: 500 }}>(buscando...)</span>}
+                </h2>
+                
+                {/* Select All Checkbox & Save Actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                  <label className="custom-checkbox-container" style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                    <input
+                      type="checkbox"
+                      onChange={handleSelectAll}
+                      checked={filteredResults.length > 0 && filteredResults.every(l => selectedIds[l.external_id])}
+                    />
+                    <div className="checkmark-box" style={{ width: '16px', height: '16px', borderRadius: '4px' }}></div>
+                    <span>Seleccionar todo</span>
+                  </label>
+                  
+                  <button
+                    className="btn btn-success"
+                    onClick={onSave}
+                    disabled={saving || isLoading || Object.values(selectedIds).filter(Boolean).length === 0}
+                    style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', borderRadius: '8px', fontWeight: 600 }}
+                  >
+                    {saving ? 'Guardando...' : `Guardar (${Object.values(selectedIds).filter(Boolean).length})`}
+                  </button>
                 </div>
 
-                <button className="btn btn-success" onClick={onSave} disabled={saving || isLoading} style={{ padding: '0.75rem 1.5rem', borderRadius: '10px' }}>
-                  {saving ? 'Guardando leads...' : `Guardar Seleccionados (${Object.values(selectedIds).filter(Boolean).length})`}
-                </button>
+                {/* Segmented Filter Control */}
+                <div className="segmented-filter-tabs">
+                  {(['all', 'no_website', 'has_website'] as const).map(f => (
+                    <button key={f}
+                      className={`segmented-tab-btn ${webFilter === f ? 'active' : ''}`}
+                      onClick={() => setWebFilter(f)}>
+                      {f === 'all' ? 'Todos' : f === 'no_website' ? 'Sin Web' : 'Con Web'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Table Container */}
-              <div className="table-container" style={{ flexGrow: 1, overflowY: 'auto' }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '40px', textAlign: 'center' }}>
-                        <input type="checkbox" onChange={handleSelectAll}
-                          checked={filteredResults.length > 0 && filteredResults.every(l => selectedIds[l.external_id])}
-                          style={{ cursor: 'pointer' }} />
-                      </th>
-                      <th>Nombre</th>
-                      <th>Teléfono</th>
-                      <th>Sitio Web</th>
-                      <th>Score</th>
-                      <th>Dirección</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredResults.map((lead) => (
-                      <tr key={lead.external_id}>
-                        <td style={{ textAlign: 'center' }}>
-                          <input type="checkbox" checked={!!selectedIds[lead.external_id]}
-                            onChange={() => handleToggleSelect(lead.external_id)}
-                            style={{ cursor: 'pointer' }} />
-                        </td>
-                        <td style={{ fontWeight: 600, color: '#f3f4f6' }}>{lead.business_name}</td>
-                        <td>{lead.phone ?? <span style={{ color: '#4b5563' }}>-</span>}</td>
-                        <td>
-                          {lead.has_website ? (
-                            <span className="badge badge-green">Con Web</span>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <span className="badge badge-yellow" style={{ width: 'fit-content' }}>Sin Web</span>
-                              {lead.raw_tags?.social_link && (
-                                <a href={lead.raw_tags.social_link} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize: '0.72rem', color: '#a78bfa', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '2px', width: 'fit-content' }}>
-                                  🔗 Red Social
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`score-indicator ${(lead.lead_score ?? 0) >= 70 ? 'score-high' : (lead.lead_score ?? 0) >= 40 ? 'score-med' : 'score-low'}`}>
+              {/* Scrollable list of cards */}
+              <div className="lead-cards-container">
+                {filteredResults.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#4b5563', marginTop: '2rem', fontSize: '0.85rem' }}>
+                    No se encontraron leads con el filtro actual.
+                  </div>
+                ) : (
+                  filteredResults.map((lead) => {
+                    const isSelected = !!selectedIds[lead.external_id];
+                    return (
+                      <div key={lead.external_id} className={`lead-result-card ${isSelected ? 'selected' : ''}`}>
+                        <div className="lead-card-header">
+                          <label className="custom-checkbox-container" style={{ flexGrow: 1 }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(lead.external_id)}
+                            />
+                            <div className="checkmark-box"></div>
+                            <span className="lead-card-title">{lead.business_name}</span>
+                          </label>
+                          <span className={`score-indicator ${(lead.lead_score ?? 0) >= 70 ? 'score-high' : (lead.lead_score ?? 0) >= 40 ? 'score-med' : 'score-low'}`} style={{ transform: 'scale(0.85)', transformOrigin: 'top right', flexShrink: 0 }}>
                             {lead.lead_score ?? 0}
                           </span>
-                        </td>
-                        <td style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-                          {lead.address ? `${lead.address}${lead.district ? ', ' + lead.district : ''}` : <span style={{ color: '#4b5563' }}>-</span>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+
+                        <div className="lead-card-meta">
+                          <span className="lead-meta-badge">
+                            🏷️ {lead.category ? lead.category.replace('_', ' ') : 'Negocio'}
+                          </span>
+                          {lead.rating && lead.rating > 0 ? (
+                            <span className="lead-rating-badge">
+                              ⭐ {lead.rating.toFixed(1)} <span className="lead-rating-reviews">({lead.reviews_count ?? 0})</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: '#4b5563', fontSize: '0.72rem' }}>Sin opiniones</span>
+                          )}
+                        </div>
+
+                        {lead.business_introduction && (
+                          <div className="lead-card-intro">
+                            💬 "{lead.business_introduction}"
+                          </div>
+                        )}
+
+                        <div className="lead-card-body">
+                          <div className="lead-info-row">
+                            <span className="lead-info-icon">📞</span>
+                            <span>{lead.phone ?? <em style={{ color: '#4b5563' }}>Sin teléfono</em>}</span>
+                            <span style={{ marginLeft: 'auto' }}>
+                              {lead.has_website ? (
+                                <span className="badge badge-green" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Con Web</span>
+                              ) : (
+                                <span className="badge badge-yellow" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>Sin Web</span>
+                              )}
+                            </span>
+                          </div>
+                          
+                          <div className="lead-info-row" style={{ alignItems: 'flex-start' }}>
+                            <span className="lead-info-icon" style={{ marginTop: '2px' }}>📍</span>
+                            <span style={{ fontSize: '0.74rem', color: '#6b7280', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={lead.address ?? ''}>
+                              {lead.address ? lead.address : 'Dirección no disponible'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="lead-card-actions">
+                          <div>
+                            {lead.phone ? (
+                              <a
+                                href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', borderColor: 'rgba(16, 185, 129, 0.25)', color: '#34d399', fontWeight: 600 }}
+                              >
+                                💬 WhatsApp
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: '#4b5563' }}>Sin WhatsApp</span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            {lead.raw_tags?.social_link && (
+                              <a
+                                href={lead.raw_tags.social_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary"
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 500 }}
+                              >
+                                🔗 Red
+                              </a>
+                            )}
+                            <button
+                              onClick={() => lead.latitude && lead.longitude && setMapCenter([lead.latitude, lead.longitude])}
+                              disabled={!lead.latitude || !lead.longitude}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 500 }}
+                              title="Centrar en el mapa"
+                            >
+                              🎯 Centrar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
+
             </div>
           </div>
         )}
+
+
       </div>
 
-      {/* Premium Glassmorphic Progress Modal Overlay */}
-      {isLoading && (
+      {/* Sleek Floating Scan Progress Widget (Minimized State) */}
+      {isLoading && isMinimized && (
+        <div className="glass-progress-minimized-widget">
+          <div className="minimized-header">
+            <div className="minimized-title">
+              <div className="minimized-radar">
+                <div className="minimized-radar-sweep"></div>
+                <div className="minimized-radar-center"></div>
+              </div>
+              <span>Escaneo en curso...</span>
+            </div>
+            <button
+              onClick={() => setIsMinimized(false)}
+              className="btn btn-primary"
+              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: '6px' }}
+            >
+              🔎 Ver detalles
+            </button>
+          </div>
+          
+          {/* Progress bar in widget */}
+          <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{
+              width: `${progressPct}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, #7c3aed, #10b981)',
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
+
+          <div className="minimized-stats">
+            <span>Progreso: <strong>{progressPct}%</strong> ({completedCells}/{totalCells})</span>
+            <span style={{ color: '#10b981', fontWeight: 600 }}>🟢 {totalFound} leads</span>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Glassmorphic Progress Modal Overlay (Maximized State) */}
+      {isLoading && !isMinimized && (
         <div className="glass-progress-overlay">
-          <div className="glass-progress-modal">
+          <div className="glass-progress-modal" style={{ position: 'relative' }}>
+            {/* Sleek Minimize Button at top-right */}
+            <button
+              onClick={() => setIsMinimized(true)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                color: '#9ca3af',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                padding: '0.4rem 0.7rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.color = '#9ca3af';
+              }}
+              title="Minimizar y explorar mapa/leads en vivo"
+            >
+              🗕 Ocultar al fondo
+            </button>
+
             {/* Spinning Radar Spinner */}
             <div className="radar-wrapper">
               <div className="radar-outer-ring"></div>
@@ -523,6 +741,7 @@ export default function SearchPage() {
           </div>
         </div>
       )}
+
     </section>
   );
 }

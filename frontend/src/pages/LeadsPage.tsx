@@ -208,6 +208,7 @@ export default function LeadsPage() {
                 <tr>
                   <th>Nombre</th>
                   <th>Rubro</th>
+                  <th>Rating</th>
                   <th>Estado Lead</th>
                   <th>Estado Comercial</th>
                   <th>Score</th>
@@ -221,6 +222,16 @@ export default function LeadsPage() {
                   <tr key={lead.id ?? lead.external_id}>
                     <td style={{ fontWeight: 600, color: '#f3f4f6' }}>{lead.business_name}</td>
                     <td style={{ textTransform: 'capitalize' }}>{lead.category}</td>
+                    <td>
+                      {lead.rating && lead.rating > 0 ? (
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          ⭐ {lead.rating.toFixed(1)}
+                          <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.75rem' }}>({lead.reviews_count ?? 0})</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#4b5563' }}>-</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${getLeadStatusBadgeClass(lead.lead_status)}`}>
                         {lead.lead_status?.replace(/_/g, ' ')}
@@ -248,6 +259,7 @@ export default function LeadsPage() {
                         Gestionar
                       </button>
                     </td>
+
                   </tr>
                 ))}
               </tbody>

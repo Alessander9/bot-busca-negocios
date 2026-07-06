@@ -713,7 +713,7 @@ tr:hover td {
 .search-view-layout {
   position: relative;
   width: 100%;
-  height: calc(100vh - 8rem);
+  height: calc(100vh - 6rem);
   display: flex;
   overflow: hidden;
   border-radius: 24px;
@@ -783,53 +783,149 @@ tr:hover td {
   box-shadow: 0 8px 30px rgba(124, 58, 237, 0.6);
 }
 
-/* Slide-up Results Sheet from bottom */
-.results-bottom-sheet {
+/* Floating Results Panel on Right (Strategic Placement) */
+.floating-results-panel {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 60%;
-  z-index: 20;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 28px 28px 0 0;
-  padding: 1.5rem 2rem 2rem;
-  box-shadow: 0 -15px 35px rgba(0, 0, 0, 0.4);
-  transform: translateY(calc(100% - 64px)); /* Only show handle initially */
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.results-bottom-sheet.expanded {
-  transform: translateY(0);
-}
-
-/* Sheet header / drag handle */
-.sheet-handle-bar {
-  width: 100%;
-  height: 32px;
-  margin-top: -12px;
+  top: 20px;
+  right: 20px;
+  width: 410px;
+  height: calc(100% - 40px);
+  z-index: 10;
+  background: rgba(10, 15, 30, 0.8);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-results-panel.collapsed {
+  transform: translateX(450px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Floating Toggle Button for Results Panel */
+.toggle-results-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 11;
+  background: rgba(16, 185, 129, 0.9);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  user-select: none;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s;
 }
 
-.sheet-handle-pill {
-  width: 48px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 99px;
-  transition: background 0.3s;
+.toggle-results-btn:hover {
+  transform: scale(1.05);
+  background: #10b981;
+  box-shadow: 0 8px 30px rgba(16, 185, 129, 0.6);
 }
 
-.sheet-handle-bar:hover .sheet-handle-pill {
-  background: rgba(255, 255, 255, 0.3);
+/* Scrollable Container for Lead Cards */
+.lead-cards-container {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
 }
+
+/* Scrollbar styling for Lead Cards Panel */
+.lead-cards-container::-webkit-scrollbar {
+  width: 6px;
+}
+.lead-cards-container::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+.lead-cards-container::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+.lead-cards-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
+}
+
+/* Card representation of a single Lead */
+.lead-result-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 1rem;
+  transition: all 0.25s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lead-result-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(139, 92, 246, 0.3);
+  transform: translateY(-2px);
+}
+
+.lead-result-card.selected {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.03);
+}
+
+.lead-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lead-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.lead-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  flex-wrap: wrap;
+}
+
+.lead-card-body {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.lead-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
 
 /* Premium Search Progress Modal Overlay */
 .glass-progress-overlay {
@@ -1115,5 +1211,336 @@ tr:hover td {
 .popup-val.score-low {
   color: #ef4444;
 }
+
+/* ==========================================================================
+   MINIMIZED FLOAT SEARCH PROGRESS WIDGET
+   ========================================================================== */
+
+.glass-progress-minimized-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 330px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 20px;
+  padding: 1.25rem;
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.6),
+    0 0 30px rgba(139, 92, 246, 0.2);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideInWidget 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes slideInWidget {
+  from { transform: translateY(40px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.minimized-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.minimized-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.minimized-radar {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.minimized-radar-sweep {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: #10b981;
+  animation: spin-clockwise 1.2s linear infinite;
+}
+
+.minimized-radar-center {
+  width: 5px;
+  height: 5px;
+  background: #10b981;
+  border-radius: 50%;
+}
+
+.minimized-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   PREMIUM CUSTOM CHECKBOX
+   ========================================================================== */
+
+.custom-checkbox-container {
+  display: inline-flex;
+  align-items: flex-start;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  gap: 10px;
+}
+
+.custom-checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark-box {
+  flex-shrink: 0;
+  height: 18px;
+  width: 18px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 2px;
+}
+
+.custom-checkbox-container:hover input ~ .checkmark-box {
+  border-color: rgba(139, 92, 246, 0.5);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.custom-checkbox-container input:checked ~ .checkmark-box {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  border-color: #a78bfa;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.35);
+}
+
+.checkmark-box:after {
+  content: "";
+  display: none;
+}
+
+.custom-checkbox-container input:checked ~ .checkmark-box:after {
+  display: block;
+}
+
+.custom-checkbox-container .checkmark-box:after {
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+/* ==========================================================================
+   SEGMENTED FILTER TABS
+   ========================================================================== */
+
+.segmented-filter-tabs {
+  background: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 3px;
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.segmented-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0.45rem 0.75rem;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.segmented-tab-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.segmented-tab-btn.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+/* ==========================================================================
+   POLISHED LEAD CARD LAYOUT MODIFICATIONS
+   ========================================================================== */
+
+.lead-result-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 1.15rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.lead-result-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(139, 92, 246, 0.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+.lead-result-card.selected {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    inset 0 0 12px rgba(16, 185, 129, 0.02);
+}
+
+.lead-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lead-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  line-height: 1.35;
+  margin: 0;
+  transition: color 0.2s;
+}
+
+.lead-result-card:hover .lead-card-title {
+  color: #ffffff;
+}
+
+.lead-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  flex-wrap: wrap;
+}
+
+.lead-meta-badge {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  color: #c084fc;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.lead-rating-badge {
+  color: #fbbf24;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lead-rating-reviews {
+  color: #6b7280;
+  font-weight: 400;
+  font-size: 0.72rem;
+}
+
+.lead-card-intro {
+  font-size: 0.76rem;
+  color: #9ca3af;
+  font-style: italic;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border-left: 2px solid #8b5cf6;
+  margin: 2px 0;
+  line-height: 1.35;
+}
+
+.lead-card-body {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lead-info-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lead-info-icon {
+  color: #6b7280;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.lead-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+/* Polishing left parameters panel */
+.floating-control-panel {
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.6), 
+    0 0 30px rgba(139, 92, 246, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.floating-results-panel {
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.6), 
+    0 0 30px rgba(139, 92, 246, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+
 
 
