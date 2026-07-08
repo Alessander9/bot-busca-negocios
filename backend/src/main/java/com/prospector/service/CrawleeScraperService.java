@@ -126,7 +126,7 @@ public class CrawleeScraperService {
    *
    * @param jobId UUID of the SearchJob to update
    */
-  public void scrapeGoogleMapsGrid(UUID jobId, String category, Double latitude, Double longitude, Integer radiusKm, String mode) {
+  public void scrapeGoogleMapsGrid(UUID jobId, String category, Double latitude, Double longitude, Integer radiusKm, String mode, Boolean aiOptimize) {
     List<Lead> allLeads = new ArrayList<>();
     try {
       String userDir = System.getProperty("user.dir");
@@ -138,10 +138,10 @@ public class CrawleeScraperService {
         return;
       }
 
-      log.info("[Job {}] Iniciando grid search: category={} lat={} lon={} radius={}km mode={}",
-          jobId, category, latitude, longitude, radiusKm, mode);
+      log.info("[Job {}] Iniciando grid search: category={} lat={} lon={} radius={}km mode={} aiOptimize={}",
+          jobId, category, latitude, longitude, radiusKm, mode, aiOptimize);
 
-      ProcessBuilder pb = new ProcessBuilder(
+      List<String> command = new ArrayList<>(List.of(
           "python",
           scraperScript.getAbsolutePath(),
           "--category", category,
@@ -150,8 +150,14 @@ public class CrawleeScraperService {
           "--radius", String.valueOf(radiusKm),
           "--grid",
           "--mode", (mode != null ? mode : "basic")
-      );
+      ));
+      if (Boolean.TRUE.equals(aiOptimize)) {
+        command.add("--ai-optimize");
+      }
+
+      ProcessBuilder pb = new ProcessBuilder(command);
       pb.directory(rootDir);
+
       pb.redirectErrorStream(true);
 
       Process process = pb.start();

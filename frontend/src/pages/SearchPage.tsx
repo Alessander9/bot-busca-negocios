@@ -57,6 +57,7 @@ export default function SearchPage() {
   const [webFilter, setWebFilter] = useState<'all' | 'no_website' | 'has_website'>('all');
   const [mode, setMode] = useState<'basic' | 'complete'>('basic');
   const [customCategory, setCustomCategory] = useState('');
+  const [aiOptimize, setAiOptimize] = useState(false);
 
   // Grid search job state
   const [jobId, setJobId] = useState<string | null>(null);
@@ -163,7 +164,8 @@ export default function SearchPage() {
         latitude,
         longitude,
         radiusKm,
-        mode
+        mode,
+        ai_optimize: aiOptimize
       });
       setJobId(id);
       setJobStatus('PENDING');
@@ -316,6 +318,44 @@ export default function SearchPage() {
                   </button>
                 </div>
               </div>
+
+            {/* AI Optimization Option */}
+            <div className="form-group" style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px dashed rgba(139, 92, 246, 0.18)', borderRadius: '12px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ flex: 1, paddingRight: '10px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  ✨ Optimización con IA
+                </div>
+                <div style={{ fontSize: '0.66rem', color: '#8b9bb4', marginTop: '2px', lineHeight: 1.25 }}>
+                  Usa Gemini para expandir rubros y calificar leads en tiempo real.
+                </div>
+              </div>
+              
+              <label className="switch-toggle" style={{ position: 'relative', display: 'inline-block', width: '42px', height: '22px', cursor: 'pointer', flexShrink: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={aiOptimize}
+                  onChange={(e) => setAiOptimize(e.target.checked)}
+                  disabled={isLoading}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: aiOptimize ? '#8b5cf6' : 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: '22px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: aiOptimize ? '0 0 10px rgba(139, 92, 246, 0.3)' : 'none',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <span style={{
+                    position: 'absolute', height: '14px', width: '14px', left: aiOptimize ? '23px' : '4px', bottom: '3px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '50%',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }} />
+                </span>
+              </label>
+            </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Ubicación Geográfica</label>
@@ -518,6 +558,33 @@ export default function SearchPage() {
                             <span style={{ color: '#4b5563', fontSize: '0.72rem' }}>Sin opiniones</span>
                           )}
                         </div>
+
+                        {lead.raw_tags?.ai_qualification && (
+                          <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '4px', 
+                            background: 'rgba(139, 92, 246, 0.05)', 
+                            border: '1px solid rgba(139, 92, 246, 0.15)', 
+                            borderRadius: '10px', 
+                            padding: '8px 10px', 
+                            marginTop: '2px' 
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                🧠 Calificación IA
+                              </span>
+                              <span className={`badge ${lead.raw_tags.ai_qualification === 'Alta' ? 'badge-green' : lead.raw_tags.ai_qualification === 'Media' ? 'badge-yellow' : 'badge-red'}`} style={{ fontSize: '0.62rem', padding: '1px 5px', fontWeight: 700 }}>
+                                Potencial {lead.raw_tags.ai_qualification}
+                              </span>
+                            </div>
+                            {lead.raw_tags.ai_summary && (
+                              <p style={{ fontSize: '0.72rem', color: '#d8b4fe', margin: 0, lineHeight: 1.35 }}>
+                                {lead.raw_tags.ai_summary}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         {lead.business_introduction && (
                           <div className="lead-card-intro">

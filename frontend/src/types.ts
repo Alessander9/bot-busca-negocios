@@ -54,6 +54,7 @@ export type SearchRequest = {
   longitude: number;
   radiusKm: number;
   mode?: 'basic' | 'complete';
+  ai_optimize?: boolean;
 };
 
 export type JobStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'ERROR';

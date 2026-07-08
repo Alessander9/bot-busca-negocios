@@ -40,8 +40,19 @@ public class LeadScoringService {
     
     if (lead.getOpeningHours() != null && !lead.getOpeningHours().isBlank()) score += 5;
     if (lead.getImageUrl() != null && !lead.getImageUrl().isBlank()) score += 5;
+
+    // AI qualification adjustment
+    if (lead.getRawTags() != null) {
+      Object qualification = lead.getRawTags().get("ai_qualification");
+      if ("Alta".equals(qualification)) {
+        score += 15;
+      } else if ("Baja".equals(qualification)) {
+        score -= 10;
+      }
+    }
     
     return Math.max(0, Math.min(score, 100));
+
   }
 
   public LeadStatus statusFor(int score) {

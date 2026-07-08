@@ -371,6 +371,33 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
                     # so that it remains a qualified prospect.
                     website = None
 
+            # AI Lead Qualification and Analysis
+            ai_qualification = None
+            ai_summary = None
+            if args.ai_optimize:
+                try:
+                    prompt = (
+                        f"Analiza la siguiente información de este negocio para calificar su potencial comercial (prospección B2B). "
+                        f"Nombre: {name}. "
+                        f"Categoría: {category}. "
+                        f"Introducción: {introduction if introduction else 'No disponible'}. "
+                        f"Calificación: {rating} ({reviews_count} reseñas). "
+                        f"Sitio Web: {website if website else 'Ninguno'}. "
+                        f"\nGenera un JSON con los siguientes dos campos exactos: "
+                        f"1. 'qualification': 'Alta' / 'Media' / 'Baja' (indica la oportunidad de venta B2B). "
+                        f"2. 'summary': Un resumen directo de 1 frase en español sobre su perfil y oportunidad de venta de diseño/marketing digital o servicios (máximo 15 palabras). "
+                        f"\nRetorna ÚNICAMENTE el objeto JSON válido. No agregues formato markdown, ni digas '```json', ni des explicaciones."
+                    )
+                    ai_res = query_gemini(prompt)
+                    if ai_res:
+                        clean_ai = ai_res.replace("```json", "").replace("```", "").strip()
+                        ai_data = json.loads(clean_ai)
+                        ai_qualification = ai_data.get("qualification")
+                        ai_summary = ai_data.get("summary")
+                        context.log.info(f"[AI] Qualified Lead '{name}': {ai_qualification}")
+                except Exception as ai_err:
+                    context.log.warning(f"Failed to qualify lead with AI: {ai_err}")
+
             lead = {
                 "external_id": f"googlemaps_{place_id}",
                 "osm_type": "googlemaps",
@@ -390,9 +417,12 @@ async def scrape_single_cell(category: str, search_url: str, args) -> list:
                 "country": "Perú",
                 "raw_tags": {
                     "social_link": social_link,
-                    "google_maps_url": link
+                    "google_maps_url": link,
+                    "ai_qualification": ai_qualification,
+                    "ai_summary": ai_summary
                 }
             }
+
 
             cell_results.append(lead)
         except Exception as ex:
@@ -652,10 +682,68 @@ def normalize_category(cat_str: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Gemini AI Helpers
+# ---------------------------------------------------------------------------
+
+def load_env_file():
+    """Load variables from root workspace .env file manually into os.environ."""
+    env_path = os.path.join(parent_dir, ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ[key.strip()] = val.strip()
+
+def query_gemini(prompt: str) -> str:
+    """Synchronous light-weight API query to Gemini 1.5 Flash."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        sys.stderr.write("[Gemini] API key missing in environment.\n")
+        sys.stderr.flush()
+        return ""
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
+            }]
+        }]
+    }
+    
+    import urllib.request
+    import ssl
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            return text.strip()
+    except Exception as e:
+        sys.stderr.write(f"[Gemini Error] {e}\n")
+        sys.stderr.flush()
+        return ""
+
+
+# ---------------------------------------------------------------------------
 # Main entrypoint
 # ---------------------------------------------------------------------------
 
 async def main():
+    # Load env variables on startup
+    load_env_file()
+
     parser = argparse.ArgumentParser(description="Google Maps Scraper")
     parser.add_argument("--category", required=True, help="Category to search")
     parser.add_argument("--latitude", type=float, required=True, help="Latitude")
@@ -665,6 +753,8 @@ async def main():
                         help="Enable grid search mode (multiple cells across the area)")
     parser.add_argument("--mode", choices=["basic", "complete"], default="basic",
                         help="basic = single term + double zoom | complete = all aliases + double zoom")
+    parser.add_argument("--ai-optimize", action="store_true", default=False,
+                        help="Enable AI search terms expansion and B2B lead qualification using Gemini")
     args = parser.parse_args()
 
     # Apply search normalizer
@@ -687,6 +777,31 @@ async def main():
         else:
             zooms = [14, 15]
             search_terms = [CATEGORY_ALIASES.get(normalized_cat, [args.category])[0]]
+
+        # Expand search terms using Gemini if AI optimization is enabled
+        if args.ai_optimize:
+            sys.stderr.write(f"[Gemini] Optimizing search terms for category '{args.category}'...\n")
+            sys.stderr.flush()
+            
+            prompt = (
+                f"Eres un experto en prospección y marketing B2B en Lima, Perú. El usuario quiere buscar negocios del rubro '{args.category}'. "
+                f"Genera una lista con hasta 5 términos de búsqueda optimizados y específicos para buscar en Google Maps en español (ej. sin acentos y en minúsculas). "
+                f"Retorna ÚNICAMENTE un array JSON válido de strings, por ejemplo: [\"termino1\", \"termino2\"]. "
+                f"No agregues formato markdown, no digas '```json', y no agregues ninguna explicación adicional. Solo retorna el array."
+            )
+            ai_response = query_gemini(prompt)
+            if ai_response:
+                try:
+                    clean_res = ai_response.replace("```json", "").replace("```", "").strip()
+                    expanded_terms = json.loads(clean_res)
+                    if isinstance(expanded_terms, list) and len(expanded_terms) > 0:
+                        search_terms = expanded_terms
+                        sys.stderr.write(f"[Gemini] Expanded search terms: {search_terms}\n")
+                        sys.stderr.flush()
+                except Exception as p_err:
+                    sys.stderr.write(f"[Gemini] Failed to parse AI response: {ai_response}. Error: {p_err}\n")
+                    sys.stderr.flush()
+
 
 
 

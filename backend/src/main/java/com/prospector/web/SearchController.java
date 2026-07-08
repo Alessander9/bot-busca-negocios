@@ -65,7 +65,7 @@ public class SearchController {
     // Launch scraping in background thread — does NOT block this request
     CompletableFuture.runAsync(() ->
         crawleeScraperService.scrapeGoogleMapsGrid(
-            jobId, request.category, request.latitude, request.longitude, request.radiusKm, mode)
+            jobId, request.category, request.latitude, request.longitude, request.radiusKm, mode, request.aiOptimize)
     );
 
     log.info("Grid search job {} started for category={} mode={}", jobId, request.category, mode);
@@ -293,6 +293,17 @@ public class SearchController {
     public String source;
     /** "basic" (default) or "complete" (all aliases) */
     public String mode = "basic";
+    public Boolean aiOptimize = false;
+
+    @com.fasterxml.jackson.annotation.JsonSetter("ai_optimize")
+    public void setAiOptimizeSnake(Boolean aiOptimize) {
+      this.aiOptimize = aiOptimize;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonSetter("aiOptimize")
+    public void setAiOptimizeCamel(Boolean aiOptimize) {
+      this.aiOptimize = aiOptimize;
+    }
 
     public void setRadiusKm(Integer radiusKm) {
       this.radiusKm = radiusKm;
