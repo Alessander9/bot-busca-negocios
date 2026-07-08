@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" role="img" aria-labelledby="title desc">
+  <title id="title">Prospector Web Local</title>
+  <desc id="desc">Portada del repositorio con estilo geoespacial y acentos verdes y cian.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06101f" />
+      <stop offset="55%" stop-color="#07182d" />
+      <stop offset="100%" stop-color="#03111d" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6dff6a" />
+      <stop offset="100%" stop-color="#44d9ff" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#44d9ff" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#44d9ff" stop-opacity="0" />
+    </radialGradient>
+    <filter id="blur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" />
+    </filter>
+  </defs>
+  <rect width="1600" height="500" fill="url(#bg)" />
+  <circle cx="250" cy="185" r="130" fill="none" stroke="#2dd4bf" stroke-width="3" opacity="0.5" />
+  <circle cx="250" cy="185" r="90" fill="none" stroke="#6dff6a" stroke-width="5" opacity="0.9" />
+  <circle cx="250" cy="185" r="55" fill="url(#glow)" filter="url(#blur)" />
+  <path d="M250 115c-35 0-64 28-64 63 0 48 64 122 64 122s64-74 64-122c0-35-29-63-64-63zm0 86c-13 0-23-10-23-23s10-23 23-23 23 10 23 23-10 23-23 23z" fill="url(#accent)" />
+  <g opacity="0.22" stroke="#44d9ff" stroke-width="1">
+    <path d="M770 0 L1600 0" />
+    <path d="M690 50 L1600 450" />
+    <path d="M620 0 L1450 500" />
+    <path d="M520 500 L1200 0" />
+  </g>
+  <circle cx="1160" cy="180" r="150" fill="none" stroke="#6dff6a" stroke-width="2" opacity="0.35" />
+  <circle cx="1160" cy="180" r="105" fill="none" stroke="#44d9ff" stroke-width="3" opacity="0.6" />
+  <circle cx="1160" cy="180" r="60" fill="url(#glow)" filter="url(#blur)" />
+  <path d="M1160 100c-34 0-62 27-62 61 0 46 62 115 62 115s62-69 62-115c0-34-28-61-62-61zm0 81c-11 0-20-9-20-20s9-20 20-20 20 9 20 20-9 20-20 20z" fill="url(#accent)" />
+  <g fill="none" stroke="#1f7ae0" stroke-width="1" opacity="0.5">
+    <path d="M900 120 L1080 95 L1245 130 L1370 205" />
+    <path d="M860 195 L1020 150 L1190 200 L1450 140" />
+    <path d="M930 300 L1100 245 L1280 280 L1490 250" />
+    <path d="M980 380 L1140 330 L1300 355 L1520 300" />
+  </g>
+  <g>
+    <circle cx="1040" cy="145" r="7" fill="#6dff6a" />
+    <circle cx="1230" cy="110" r="7" fill="#44d9ff" />
+    <circle cx="1290" cy="260" r="7" fill="#44d9ff" />
+    <circle cx="1100" cy="325" r="7" fill="#6dff6a" />
+    <circle cx="1400" cy="190" r="7" fill="#44d9ff" />
+    <circle cx="1460" cy="330" r="7" fill="#6dff6a" />
+  </g>
+  <text x="360" y="205" font-family="Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" fill="#f4f7fb">PROSPECTOR</text>
+  <text x="360" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" fill="url(#accent)">WEB LOCAL</text>
+  <text x="360" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="30" fill="#d7e2f2">Inteligencia geoespacial y leads B2B con IA</text>
+  <rect x="70" y="405" width="1460" height="1" fill="#16324d" opacity="0.8" />
+  <g font-family="Segoe UI, Arial, sans-serif" fill="#d7e2f2">
+    <text x="95" y="450" font-size="22" font-weight="700">MAPEO INTELIGENTE</text>
+    <text x="420" y="450" font-size="22" font-weight="700">EXTRACCIÓN AUTOMÁTICA</text>
+    <text x="800" y="450" font-size="22" font-weight="700">IA AVANZADA</text>
+    <text x="1120" y="450" font-size="22" font-weight="700">LEADS B2B CALIFICADOS</text>
+  </g>
+</svg>
